@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+@theme {
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface2);
+  --color-border: var(--border);
+  --color-amber: #f5a623;
+  --color-cyan: #00d4ff;
+  --color-green: #00ff88;
+  --color-red: #ff4757;
+  --color-purple: #c792ea;
+  --color-text: var(--text);
+  --color-dim: var(--dim);
+  --color-bright: var(--bright);
+}
+
+:root {
+  --bg: #090c10;
+  --surface: #0d1117;
+  --surface2: #111820;
+  --border: #1e2a38;
+  --text: #c9d1d9;
+  --dim: #586069;
+  --bright: #e6edf3;
+}
+
+.light {
+  --bg: #f6f8fa;
+  --surface: #ffffff;
+  --surface2: #f0f2f5;
+  --border: #d0d7de;
+  --text: #24292f;
+  --dim: #57606a;
+  --bright: #1b1f24;
+}
+
+@layer base {
+  html, body {
+    @apply min-h-screen bg-bg text-text font-mono text-[13px] leading-relaxed transition-colors duration-300;
+  }
+  
+  body::before {
+    content: '';
+    @apply fixed inset-0 pointer-events-none z-[9999] transition-opacity duration-300;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.022) 2px, rgba(0,0,0,0.022) 4px);
+  }
+
+  .light body::before {
+    @apply opacity-30;
+  }
+}
+
+@keyframes lp {
+  0%, 100% { box-shadow: 0 0 10px rgba(0,212,255,0.18), inset 0 0 6px rgba(0,212,255,0.04); }
+  50% { box-shadow: 0 0 22px rgba(0,212,255,0.38), inset 0 0 14px rgba(0,212,255,0.1); }
+}
+
+@keyframes db {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes bl {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.logo-animation {
+  animation: lp 3s ease-in-out infinite;
+}
+
+.dot-animation {
+  animation: db 1.2s ease-in-out infinite;
+}
+
+.blink-animation {
+  animation: bl 1.5s ease-in-out infinite;
+}
+
+.code-block::-webkit-scrollbar {
+  width: 4px;
+}
+.code-block::-webkit-scrollbar-thumb {
+  @apply bg-border;
+}

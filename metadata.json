@@ -1,0 +1,5 @@
+{
+  "name": "MCP Config Generator",
+  "description": "Local-first tool to generate MCP configurations for various IDEs and servers.",
+  "requestFramePermissions": []
+}
