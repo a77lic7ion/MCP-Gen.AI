@@ -565,6 +565,49 @@ const CATALOGUE: Category[] = [
         inputs: [{ id: 'analysis_db', label: 'Analysis DB Path', placeholder: '/home/user/analysis.db', type: 'text', token: '{{analysis_db}}' }]
       }
     ]
+  },
+  {
+    id: 'external', icon: Network, name: 'External & APIs',
+    servers: [
+      {
+        id: 'ex-spotify', title: 'Spotify', pkg: 'mcp-server-spotify',
+        cmd: 'npx', args: ['-y', 'mcp-server-spotify@{{version}}'],
+        desc: 'Control playback, search tracks, and manage playlists.',
+        badges: ['key'], version: '1.0.0',
+        env: { SPOTIFY_CLIENT_ID: '{{SPOT_ID}}', SPOTIFY_CLIENT_SECRET: '{{SPOT_SECRET}}' },
+        inputs: [
+          { id: 'SPOT_ID', label: 'Client ID', placeholder: '', type: 'text', token: '{{SPOT_ID}}' },
+          { id: 'SPOT_SECRET', label: 'Client Secret', placeholder: '', type: 'password', token: '{{SPOT_SECRET}}' }
+        ]
+      },
+      {
+        id: 'ex-stripe', title: 'Stripe', pkg: 'mcp-server-stripe',
+        cmd: 'npx', args: ['-y', 'mcp-server-stripe@{{version}}'],
+        desc: 'Query customers, subscriptions, and payments via Stripe API.',
+        badges: ['key'], version: '1.0.0',
+        env: { STRIPE_API_KEY: '{{STRIPE_KEY}}' },
+        inputs: [{ id: 'STRIPE_KEY', label: 'Secret Key', placeholder: 'sk_test_…', type: 'password', token: '{{STRIPE_KEY}}' }]
+      },
+      {
+        id: 'ex-twilio', title: 'Twilio', pkg: 'mcp-server-twilio',
+        cmd: 'npx', args: ['-y', 'mcp-server-twilio@{{version}}'],
+        desc: 'Send SMS, make calls, and manage Twilio resources.',
+        badges: ['key'], version: '1.0.0',
+        env: { TWILIO_ACCOUNT_SID: '{{TW_SID}}', TWILIO_AUTH_TOKEN: '{{TW_TOKEN}}' },
+        inputs: [
+          { id: 'TW_SID', label: 'Account SID', placeholder: 'AC…', type: 'text', token: '{{TW_SID}}' },
+          { id: 'TW_TOKEN', label: 'Auth Token', placeholder: '', type: 'password', token: '{{TW_TOKEN}}' }
+        ]
+      },
+      {
+        id: 'ex-youtube', title: 'YouTube', pkg: 'mcp-server-youtube',
+        cmd: 'npx', args: ['-y', 'mcp-server-youtube@{{version}}'],
+        desc: 'Search videos, get transcripts, and manage channel data.',
+        badges: ['key'], version: '1.0.0',
+        env: { YOUTUBE_API_KEY: '{{YT_KEY}}' },
+        inputs: [{ id: 'YT_KEY', label: 'YouTube API Key', placeholder: '', type: 'password', token: '{{YT_KEY}}' }]
+      }
+    ]
   }
 ];
 
@@ -579,6 +622,7 @@ export default function App() {
   const [copyDone, setCopyDone] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('mcp-theme') as 'dark' | 'light') || 'dark');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Theme application
   useEffect(() => {
@@ -597,6 +641,28 @@ export default function App() {
   const [validationKey, setValidationKey] = useState(() => localStorage.getItem(`mcp-val-key-${localStorage.getItem('mcp-val-provider') || 'gemini'}`) || '');
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [tavilyResults, setTavilyResults] = useState<any[]>([]);
+  const [isSearchingTavily, setIsSearchingTavily] = useState(false);
+
+  const filteredServers = useMemo(() => {
+    if (!searchTerm.trim()) return [];
+    const results: ServerDef[] = [];
+    CATALOGUE.forEach(cat => {
+      cat.servers.forEach(srv => {
+        if (
+          srv.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          srv.desc.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          srv.pkg.toLowerCase().includes(searchTerm.toLowerCase())
+        ) {
+          // Avoid duplicates if a server is in multiple categories (though not currently the case)
+          if (!results.find(r => r.id === srv.id)) {
+            results.push(srv);
+          }
+        }
+      });
+    });
+    return results;
+  }, [searchTerm]);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
@@ -906,6 +972,30 @@ export default function App() {
     }
   };
 
+  const handleTavilySearch = async () => {
+    if (!tavilySearch.trim() || !tavilyKey) return;
+    setIsSearchingTavily(true);
+    setTavilyResults([]);
+    try {
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: tavilyKey,
+          query: `MCP server configuration for ${tavilySearch} model context protocol`,
+          search_depth: "advanced",
+          max_results: 5
+        })
+      });
+      const data = await response.json();
+      setTavilyResults(data.results || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearchingTavily(false);
+    }
+  };
+
   const highlight = (json: string) => {
     return json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, m => {
@@ -1136,10 +1226,35 @@ export default function App() {
                         placeholder="Search for MCP config..."
                         className="flex-1 bg-bg border border-border p-1.5 px-2.5 text-[11px] text-bright outline-none focus:border-cyan"
                       />
-                      <button className="border border-border bg-surface2 px-4 py-1.5 text-[10px] font-medium uppercase tracking-wider text-dim hover:border-cyan hover:text-cyan">
-                        SEARCH
+                      <button 
+                        onClick={handleTavilySearch}
+                        disabled={isSearchingTavily || !tavilyKey}
+                        className="border border-border bg-surface2 px-4 py-1.5 text-[10px] font-medium uppercase tracking-wider text-dim hover:border-cyan hover:text-cyan disabled:opacity-30"
+                      >
+                        {isSearchingTavily ? <Loader2 size={12} className="animate-spin" /> : 'SEARCH'}
                       </button>
                     </div>
+
+                    {tavilyResults.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <div className="text-[9px] uppercase tracking-widest text-dim">Web Results</div>
+                        {tavilyResults.map((res, i) => (
+                          <div key={i} className="p-3 border border-border bg-bg rounded-lg">
+                            <div className="text-[11px] font-medium text-bright mb-1">{res.title}</div>
+                            <p className="text-[10px] text-dim line-clamp-2 mb-2">{res.content}</p>
+                            <a 
+                              href={res.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-[9px] text-cyan hover:underline flex items-center gap-1"
+                            >
+                              <Globe size={10} />
+                              View Source
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1223,8 +1338,35 @@ export default function App() {
 
       {/* Step 2: Server Selection */}
       <section className="mb-10">
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="text-[11px] font-bold tracking-[0.15em] text-bright uppercase">02 CHOOSE MCP SERVERS</h2>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <h2 className="text-[11px] font-bold tracking-[0.15em] text-bright uppercase">02 CHOOSE MCP SERVERS</h2>
+            {searchTerm && (
+              <span className="text-[10px] text-cyan bg-cyan/5 border border-cyan/20 px-2 py-0.5 rounded-full animate-pulse">
+                Filtering...
+              </span>
+            )}
+          </div>
+          
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-dim" size={14} />
+            <input 
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search 50+ servers (github, postgres, search...)"
+              className="w-full bg-surface border border-border rounded-lg py-2 pl-10 pr-4 text-[13px] text-bright outline-none focus:border-cyan transition-colors"
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-dim hover:text-bright"
+              >
+                <Plus size={14} className="rotate-45" />
+              </button>
+            )}
+          </div>
+
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <button 
@@ -1251,6 +1393,89 @@ export default function App() {
             </button>
           </div>
         </div>
+
+        {/* Search Results */}
+        <AnimatePresence>
+          {searchTerm && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mb-10"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <h3 className="text-[10px] font-bold text-cyan uppercase tracking-wider">Search Results</h3>
+                <span className="text-[10px] text-dim bg-surface border border-border px-1.5 py-0.5 rounded">{filteredServers.length} found</span>
+              </div>
+              
+              {filteredServers.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredServers.map(s => {
+                    const isSelected = !!selServers[s.id];
+                    return (
+                      <div
+                        key={s.id}
+                        onClick={() => toggleSrv(s)}
+                        className={`border rounded-xl p-5 cursor-pointer transition-all relative flex flex-col gap-3 group ${
+                          isSelected
+                            ? 'border-cyan bg-cyan/5 shadow-[0_0_15px_rgba(201,124,101,0.05)]'
+                            : 'border-border bg-surface hover:border-dim hover:bg-surface2'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className={`text-[14px] font-bold ${isSelected ? 'text-bright' : 'text-bright'}`}>{s.title}</h4>
+                            <p className="text-[10px] text-dim font-mono mt-0.5">{s.pkg}</p>
+                          </div>
+                          <button
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                              isSelected 
+                                ? 'bg-cyan text-bg shadow-[0_0_10px_rgba(201,124,101,0.3)]' 
+                                : 'bg-bg border border-border text-dim group-hover:border-cyan group-hover:text-cyan'
+                            }`}
+                          >
+                            {isSelected ? <Check size={16} strokeWidth={3} /> : <Plus size={16} />}
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-dim leading-relaxed line-clamp-2">
+                          {s.desc}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {s.badges.map(b => (
+                            <span key={b} className="text-[9px] px-1.5 py-0.5 bg-bg border border-border rounded text-dim uppercase tracking-tighter">
+                              {b}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-12 border border-dashed border-border rounded-xl text-center">
+                  <p className="text-dim text-[13px] mb-2">No local servers found matching "{searchTerm}"</p>
+                  {tavilyKey ? (
+                    <button 
+                      onClick={() => {
+                        setTavilySearch(searchTerm);
+                        handleTavilySearch();
+                        setShowSettings(true);
+                      }}
+                      className="text-cyan hover:underline text-[11px] flex items-center gap-1 mx-auto"
+                    >
+                      <Globe size={12} />
+                      Search the web for "{searchTerm}" config?
+                    </button>
+                  ) : (
+                    <p className="text-[11px] text-dim/60">Try a different keyword or configure Tavily in Settings for web search.</p>
+                  )}
+                </div>
+              )}
+              <div className="h-[1px] w-full bg-border mt-10"></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex flex-col gap-2">
           {CATALOGUE.map(cat => {
             const selCount = cat.servers.filter(s => selServers[s.id]).length;
