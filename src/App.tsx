@@ -643,26 +643,31 @@ export default function App() {
   const [validationResult, setValidationResult] = useState<{ success: boolean; message: string } | null>(null);
   const [tavilyResults, setTavilyResults] = useState<any[]>([]);
   const [isSearchingTavily, setIsSearchingTavily] = useState(false);
+  const [isExtracting, setIsExtracting] = useState<number | null>(null);
+  const [customServers, setCustomServers] = useState<ServerDef[]>(() => JSON.parse(localStorage.getItem('mcp-custom-servers') || '[]'));
 
   const filteredServers = useMemo(() => {
-    if (!searchTerm.trim()) return [];
     const results: ServerDef[] = [];
+    const term = searchTerm.toLowerCase().trim();
+    
+    // Search in Catalogue
     CATALOGUE.forEach(cat => {
       cat.servers.forEach(srv => {
-        if (
-          srv.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          srv.desc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          srv.pkg.toLowerCase().includes(searchTerm.toLowerCase())
-        ) {
-          // Avoid duplicates if a server is in multiple categories (though not currently the case)
-          if (!results.find(r => r.id === srv.id)) {
-            results.push(srv);
-          }
+        if (!term || srv.title.toLowerCase().includes(term) || srv.desc.toLowerCase().includes(term) || srv.pkg.toLowerCase().includes(term)) {
+          if (!results.find(r => r.id === srv.id)) results.push(srv);
         }
       });
     });
-    return results;
-  }, [searchTerm]);
+
+    // Search in Custom (Extracted) Servers
+    customServers.forEach(srv => {
+      if (!term || srv.title.toLowerCase().includes(term) || srv.desc.toLowerCase().includes(term) || srv.pkg.toLowerCase().includes(term)) {
+        if (!results.find(r => r.id === srv.id)) results.push(srv);
+      }
+    });
+
+    return term ? results : [];
+  }, [searchTerm, customServers]);
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
@@ -972,6 +977,10 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    localStorage.setItem('mcp-custom-servers', JSON.stringify(customServers));
+  }, [customServers]);
+
   const handleTavilySearch = async () => {
     if (!tavilySearch.trim() || !tavilyKey) return;
     setIsSearchingTavily(true);
@@ -982,9 +991,18 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           api_key: tavilyKey,
-          query: `MCP server configuration for ${tavilySearch} model context protocol`,
+          query: `MCP server configuration for ${tavilySearch}`,
           search_depth: "advanced",
-          max_results: 5
+          include_domains: [
+            "github.com/modelcontextprotocol/servers",
+            "github.com/punkpeye/awesome-mcp-servers",
+            "github.com/wong2/awesome-mcp-servers",
+            "github.com/appcypher/awesome-mcp-servers",
+            "mcpservers.org",
+            "mcp.so",
+            "glama.ai"
+          ],
+          max_results: 6
         })
       });
       const data = await response.json();
@@ -993,6 +1011,65 @@ export default function App() {
       console.error(err);
     } finally {
       setIsSearchingTavily(false);
+    }
+  };
+
+  const addWebResult = async (result: any, index: number) => {
+    if (isExtracting !== null) return;
+    setIsExtracting(index);
+    
+    try {
+      const ai = new GoogleGenAI({ apiKey: validationKey || process.env.GEMINI_API_KEY });
+      const prompt = `
+        Extract the Model Context Protocol (MCP) server configuration from this search result.
+        Title: ${result.title}
+        Snippet: ${result.content}
+        URL: ${result.url}
+
+        Return a JSON object matching this TypeScript interface:
+        interface ServerDef {
+          id: string; // unique slug
+          title: string;
+          pkg: string; // npm package name or repo
+          cmd: string; // usually "npx"
+          args: string[]; // e.g. ["-y", "pkg-name", "--arg"]
+          desc: string; // brief description
+          badges: ('local' | 'key' | 'docker')[];
+          inputs: { id: string; label: string; placeholder: string; type: 'text' | 'password'; token: string }[];
+          env?: Record<string, string>; // e.g. { API_KEY: "{{API_KEY}}" }
+        }
+
+        If you find environment variables, add them to 'env' and create corresponding 'inputs'.
+        Use "{{token_name}}" syntax in args or env values to match input IDs.
+        If no clear config is found, try to infer the most likely "npx" command.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+
+      const serverDef: ServerDef = JSON.parse(response.text || '{}');
+      if (serverDef.id && serverDef.cmd) {
+        // Add to custom servers list
+        setCustomServers(prev => {
+          if (prev.find(s => s.id === serverDef.id)) return prev;
+          return [...prev, serverDef];
+        });
+        // Select it
+        setSelServers(prev => ({
+          ...prev,
+          [serverDef.id]: { def: serverDef, vals: {} }
+        }));
+        // Close settings to show the added server
+        setShowSettings(false);
+        setSearchTerm(serverDef.title);
+      }
+    } catch (err) {
+      console.error("Failed to extract server config", err);
+    } finally {
+      setIsExtracting(null);
     }
   };
 
@@ -1237,16 +1314,32 @@ export default function App() {
 
                     {tavilyResults.length > 0 && (
                       <div className="mt-4 space-y-3">
-                        <div className="text-[9px] uppercase tracking-widest text-dim">Web Results</div>
+                        <div className="text-[9px] uppercase tracking-widest text-dim flex justify-between items-center">
+                          <span>Web Results (Restricted Sources)</span>
+                          <span className="opacity-50">Powered by Tavily</span>
+                        </div>
                         {tavilyResults.map((res, i) => (
-                          <div key={i} className="p-3 border border-border bg-bg rounded-lg">
-                            <div className="text-[11px] font-medium text-bright mb-1">{res.title}</div>
-                            <p className="text-[10px] text-dim line-clamp-2 mb-2">{res.content}</p>
+                          <div key={i} className="p-4 border border-border bg-bg rounded-xl group hover:border-cyan transition-colors">
+                            <div className="flex justify-between items-start gap-4 mb-2">
+                              <div className="flex-1">
+                                <div className="text-[12px] font-bold text-bright mb-1 group-hover:text-cyan transition-colors">{res.title}</div>
+                                <div className="text-[9px] text-dim font-mono truncate max-w-[250px]">{res.url}</div>
+                              </div>
+                              <button 
+                                onClick={() => addWebResult(res, i)}
+                                disabled={isExtracting !== null}
+                                className="bg-cyan/10 border border-cyan/20 text-cyan px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-cyan hover:text-bg transition-all flex items-center gap-1.5"
+                              >
+                                {isExtracting === i ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                                {isExtracting === i ? 'Extracting...' : 'Add to List'}
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-dim line-clamp-3 mb-3 leading-relaxed">{res.content}</p>
                             <a 
                               href={res.url} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="text-[9px] text-cyan hover:underline flex items-center gap-1"
+                              className="text-[9px] text-dim hover:text-cyan flex items-center gap-1 w-fit"
                             >
                               <Globe size={10} />
                               View Source
@@ -1574,6 +1667,79 @@ export default function App() {
               </div>
             );
           })}
+
+          {/* Custom Servers Category */}
+          {customServers.length > 0 && (
+            <div className="border border-border rounded-xl overflow-hidden bg-surface mt-2">
+              <button 
+                onClick={() => toggleCat('custom-extracted')}
+                className="w-full flex items-center justify-between p-4 hover:bg-surface2 transition-colors group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg transition-colors ${openCats['custom-extracted'] ? 'bg-purple text-bg' : 'bg-bg text-dim group-hover:text-purple'}`}>
+                    <Zap size={16} />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[12px] font-bold text-bright block">Extracted from Web</span>
+                    <span className="text-[9px] text-dim uppercase tracking-wider">{customServers.length} Servers</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <ChevronRight size={16} className={`text-dim transition-transform duration-300 ${openCats['custom-extracted'] ? 'rotate-90' : ''}`} />
+                </div>
+              </button>
+              
+              <AnimatePresence>
+                {openCats['custom-extracted'] && (
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: 'auto' }}
+                    exit={{ height: 0 }}
+                    className="overflow-hidden border-t border-border"
+                  >
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 bg-bg/30">
+                      {customServers.map(srv => (
+                        <div 
+                          key={srv.id}
+                          onClick={() => toggleSrv(srv)}
+                          className={`p-4 border rounded-xl cursor-pointer transition-all flex items-center justify-between group ${
+                            selServers[srv.id] 
+                              ? 'border-purple bg-purple/5' 
+                              : 'border-border bg-surface hover:border-dim'
+                          }`}
+                        >
+                          <div className="flex-1 min-w-0 pr-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[13px] font-bold text-bright truncate">{srv.title}</span>
+                              <Trash2 
+                                size={12} 
+                                className="text-dim hover:text-red ml-auto cursor-pointer" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCustomServers(prev => prev.filter(s => s.id !== srv.id));
+                                  setSelServers(prev => {
+                                    const next = { ...prev };
+                                    delete next[srv.id];
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </div>
+                            <p className="text-[11px] text-dim line-clamp-1">{srv.desc}</p>
+                          </div>
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+                            selServers[srv.id] ? 'bg-purple text-bg' : 'bg-bg border border-border text-dim group-hover:border-purple group-hover:text-purple'
+                          }`}>
+                            {selServers[srv.id] ? <Check size={14} strokeWidth={3} /> : <Plus size={14} />}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </section>
 
