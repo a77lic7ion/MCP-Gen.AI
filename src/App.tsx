@@ -1012,59 +1012,80 @@ export default function App() {
   };
 
   return (
-    <div className="container mx-auto max-w-[980px] px-5 py-10 pb-24">
-      {/* Header */}
-      <header className="header relative mb-9 border-b border-border pb-5.5 after:absolute after:bottom-[-1px] after:left-0 after:h-[1px] after:w-[130px] after:bg-cyan after:shadow-[0_0_10px_var(--color-cyan)]">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-3.5">
-            <div className="logo-animation flex h-8 w-8 items-center justify-center border-[1.5px] border-cyan text-[11px] font-semibold text-cyan shadow-[0_0_12px_rgba(0,212,255,0.18),inset_0_0_8px_rgba(0,212,255,0.05)]">
-              MCP
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-bright">MCP Config Generator</h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-bg text-text font-sans transition-colors duration-300">
+      <div className="container mx-auto max-w-[980px] px-5 py-10 pb-24">
+        {/* Header */}
+        <header className="text-center flex flex-col items-center gap-2 mb-12">
+          <div className="flex items-center gap-3">
+            <svg className="w-8 h-8 text-cyan" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z"></path>
+            </svg>
+            <h1 className="text-3xl font-bold tracking-tight text-bright">MCP Config Generator</h1>
             <button 
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 border border-border bg-surface text-dim hover:text-cyan hover:border-cyan transition-colors"
+              className="ml-2 p-1.5 rounded-full hover:bg-surface transition-colors text-dim hover:text-bright"
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
             >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
           </div>
-        </div>
-        <div className="font-sans text-[10px] uppercase tracking-widest text-dim">
-          Local-first • Pick your IDE + specific servers &rarr; ready-to-paste config
-        </div>
-      </header>
+          <div className="flex items-center gap-2 text-[10px] text-dim uppercase tracking-[0.2em] font-medium mt-1">
+            <span>LOCAL-FIRST</span>
+            <span>•</span>
+            <span>PICK YOUR IDE</span>
+            <span>•</span>
+            <span>SPECIFIC SERVERS</span>
+            <span>•</span>
+            <span>READY TO-PASTE CONFIG</span>
+          </div>
+        </header>
 
-      {/* Step 1: IDE Selection */}
-      <section className="mb-7">
-        <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-cyan">
-          01 &nbsp; Select Your IDE
-          <div className="h-[1px] flex-1 bg-border"></div>
-        </div>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-[7px]">
-          {Object.values(IDE_DEFS).map(ide => (
-            <button
-              key={ide.id}
-              onClick={() => setSelIDE(ide.id)}
-              className={`flex flex-col gap-0.5 border p-[11px_13px] text-left transition-all duration-150 relative ${
-                selIDE === ide.id 
-                  ? 'border-amber bg-[rgba(245,166,35,0.07)] text-amber shadow-[0_0_12px_rgba(245,166,35,0.13)]' 
-                  : 'border-border bg-surface text-dim hover:border-amber hover:bg-[rgba(245,166,35,0.05)] hover:text-amber'
-              }`}
-            >
-              <span className="text-[11px] font-medium">{ide.label}</span>
-              <span className={`text-[10px] opacity-60 ${selIDE === ide.id ? 'text-amber opacity-50' : 'text-dim'}`}>
-                {ide.filename}
-              </span>
-              {selIDE === ide.id && <span className="absolute top-[7px] right-[9px] text-[7px] text-green">●</span>}
-            </button>
-          ))}
-        </div>
-      </section>
+        {/* Step 1: IDE Selection */}
+        <section className="mb-10">
+          <h2 className="text-[11px] font-bold tracking-[0.15em] text-bright uppercase mb-5">01 SELECT YOUR IDE</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.values(IDE_DEFS).map(ide => {
+              const isSelected = selIDE === ide.id;
+              return (
+                <button
+                  key={ide.id}
+                  onClick={() => setSelIDE(ide.id)}
+                  className={`bg-surface border rounded-xl p-5 flex flex-col items-center text-center gap-4 transition-all duration-200 group relative ${
+                    isSelected 
+                      ? 'border-cyan bg-cyan/5 shadow-[0_0_15px_rgba(201,124,101,0.1)]' 
+                      : 'border-border hover:border-dim'
+                  }`}
+                >
+                  <div className={`w-11 h-11 rounded-lg flex items-center justify-center transition-transform group-hover:scale-105 ${
+                    ide.id === 'vscode' ? 'bg-blue-500 text-white' :
+                    ide.id === 'claudecode' ? 'bg-cyan text-white font-bold font-serif text-lg' :
+                    ide.id === 'anythingllm' ? 'border border-dim text-dim' :
+                    'bg-zinc-800 text-white rounded-full'
+                  }`}>
+                    {ide.id === 'vscode' ? <Terminal size={22} /> :
+                     ide.id === 'claudecode' ? 'AI' :
+                     ide.id === 'anythingllm' ? <Brain size={22} /> :
+                     <GitBranch size={22} />}
+                  </div>
+                  <div>
+                    <h3 className={`font-semibold text-[13px] mb-1.5 ${isSelected ? 'text-cyan' : 'text-bright'}`}>{ide.label}</h3>
+                    <p className="text-[11px] text-dim leading-relaxed px-2">
+                      {ide.id === 'vscode' ? 'Pick the config for your VS Code.' :
+                       ide.id === 'claudecode' ? 'Claude Code session list authorizations.' :
+                       ide.id === 'anythingllm' ? 'AnythingLLM to collection, can definitely.' :
+                       'Set is the linux to munts endsmss.'}
+                    </p>
+                  </div>
+                  {isSelected && (
+                    <div className="absolute top-3 right-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-cyan shadow-[0_0_8px_var(--color-cyan)]" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
       {/* Settings Section */}
       <section className="mb-7">
@@ -1201,21 +1222,20 @@ export default function App() {
       </section>
 
       {/* Step 2: Server Selection */}
-      <section className="mb-7">
-        <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-cyan">
-          02 &nbsp; Choose MCP Servers
-          <div className="h-[1px] flex-1 bg-border"></div>
+      <section className="mb-10">
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="text-[11px] font-bold tracking-[0.15em] text-bright uppercase">02 CHOOSE MCP SERVERS</h2>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <button 
                 onClick={expandAll}
-                className="text-[9px] font-semibold text-dim hover:text-cyan transition-colors tracking-wider"
+                className="text-[9px] font-bold text-dim hover:text-cyan transition-colors tracking-[0.1em]"
               >
                 EXPAND ALL
               </button>
               <button 
                 onClick={collapseAll}
-                className="text-[9px] font-semibold text-dim hover:text-cyan transition-colors tracking-wider"
+                className="text-[9px] font-bold text-dim hover:text-cyan transition-colors tracking-[0.1em]"
               >
                 COLLAPSE ALL
               </button>
@@ -1224,86 +1244,85 @@ export default function App() {
             <button 
               onClick={resetServers}
               disabled={Object.keys(selServers).length === 0}
-              className="flex items-center gap-1 text-dim hover:text-red transition-colors disabled:opacity-30 disabled:hover:text-dim"
+              className="flex items-center gap-1.5 text-[9px] font-bold text-dim hover:text-red transition-colors disabled:opacity-30 tracking-[0.1em]"
             >
-              <Plus size={12} className="rotate-45" />
+              <Plus size={10} className="rotate-45" />
               RESET SELECTION
             </button>
           </div>
         </div>
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           {CATALOGUE.map(cat => {
             const selCount = cat.servers.filter(s => selServers[s.id]).length;
+            const isOpen = openCats[cat.id];
             return (
-              <div key={cat.id} className="border border-border bg-surface">
+              <div key={cat.id} className={`border rounded-lg transition-all ${isOpen ? 'border-border bg-surface/30' : 'border-border bg-surface hover:bg-surface2'}`}>
                 <button
                   onClick={() => toggleCat(cat.id)}
-                  className={`flex w-full items-center gap-2.5 p-[10px_14px] transition-colors hover:bg-white/[0.02] ${openCats[cat.id] ? 'border-b border-border' : ''}`}
+                  className={`flex w-full items-center gap-3 p-4 transition-colors ${isOpen ? 'border-b border-border' : ''}`}
                 >
-                  <cat.icon size={14} className="text-bright" />
-                  <span className="flex-1 text-left text-[12px] font-medium text-bright">{cat.name}</span>
-                  <span className={`border border-border px-2 py-0.5 text-[10px] ${selCount > 0 ? 'border-green text-green' : 'text-dim'}`}>
-                    {selCount} selected
-                  </span>
-                  <ChevronRight size={10} className={`text-dim transition-transform duration-200 ${openCats[cat.id] ? 'rotate-90' : ''}`} />
+                  <ChevronRight size={14} className={`text-dim transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
+                  <span className={`flex-1 text-left text-[13px] font-semibold ${isOpen ? 'text-bright' : 'text-dim'}`}>{cat.name}</span>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-[11px] font-medium ${selCount > 0 ? 'text-cyan' : 'text-dim'}`}>
+                      {selCount}
+                    </span>
+                    <ChevronRight size={14} className={`text-dim transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
+                  </div>
                 </button>
                 <AnimatePresence>
-                  {openCats[cat.id] && (
+                  {isOpen && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="flex flex-wrap gap-2 p-3">
-                        {cat.servers.map(s => (
-                          <div
-                            key={s.id}
-                            onClick={() => toggleSrv(s)}
-                            className={`flex-1 min-w-[200px] max-w-[320px] border p-[9px_13px] cursor-pointer transition-all relative ${
-                              selServers[s.id]
-                                ? 'border-green bg-[rgba(0,255,136,0.05)] shadow-[0_0_10px_rgba(0,255,136,0.08)]'
-                                : 'border-border bg-surface2 hover:border-purple hover:bg-[rgba(199,146,234,0.04)]'
-                            }`}
-                          >
-                            <div className="text-[12px] font-medium text-bright mb-0.5">{s.title}</div>
-                            <div className="text-[10px] text-dim font-mono">{s.pkg}</div>
-                            <div className="text-[10px] text-dim mt-1 leading-relaxed">{s.desc}</div>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {s.badges.map(b => (
-                                <span key={b} className={`text-[9px] px-1.5 py-0.5 border rounded-sm font-sans ${
-                                  b === 'local' ? 'bg-green/10 text-green border-green/20' :
-                                  b === 'key' ? 'bg-amber/10 text-amber border-amber/20' :
-                                  'bg-cyan/10 text-cyan border-cyan/20'
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4">
+                        {cat.servers.map(s => {
+                          const isSelected = !!selServers[s.id];
+                          return (
+                            <div
+                              key={s.id}
+                              onClick={() => toggleSrv(s)}
+                              className={`border rounded-lg p-4 cursor-pointer transition-all relative flex flex-col gap-3 ${
+                                isSelected
+                                  ? 'border-cyan bg-cyan/5'
+                                  : 'border-border bg-surface hover:border-dim'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <h4 className={`text-[13px] font-semibold ${isSelected ? 'text-bright' : 'text-bright'}`}>{s.title}</h4>
+                                <div className={`w-4.5 h-4.5 border rounded flex items-center justify-center transition-colors ${
+                                  isSelected ? 'bg-cyan border-cyan text-bg' : 'border-dim bg-transparent'
                                 }`}>
-                                  {b === 'local' ? 'local / offline' : b === 'key' ? 'API key needed' : 'docker'}
-                                </span>
-                              ))}
-                            </div>
-                            {selServers[s.id] && (
-                              <>
-                                <span className="absolute top-[6px] right-[10px] text-[10px] text-green">✓</span>
-                                <div className="mt-2 flex flex-col gap-1.5 border-t border-border pt-2" onClick={e => e.stopPropagation()}>
-                                  <div className="flex flex-col gap-0.5">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[9px] uppercase tracking-wider text-dim">Package Version</span>
-                                    </div>
-                                    <input
-                                      type="text"
-                                      value={selServers[s.id].vals.version || s.version || 'latest'}
-                                      onChange={e => updateInp(s.id, 'version', e.target.value)}
-                                      placeholder="e.g. 0.6.2 or latest"
-                                      className="w-full bg-bg border border-border p-1 px-2 text-[11px] text-bright outline-none focus:border-cyan"
-                                    />
-                                  </div>
+                                  {isSelected && <Check size={12} strokeWidth={3} />}
+                                </div>
+                              </div>
+                              <p className="text-[11px] text-dim leading-snug h-8 overflow-hidden line-clamp-2">
+                                {s.desc}
+                              </p>
+                              <div className="mt-auto pt-2">
+                                <label className="block text-[9px] font-bold text-dim uppercase tracking-wider mb-1.5">Package Version</label>
+                                <input
+                                  type="text"
+                                  value={selServers[s.id]?.vals.version || s.version || 'latest'}
+                                  onClick={e => e.stopPropagation()}
+                                  onChange={e => updateInp(s.id, 'version', e.target.value)}
+                                  placeholder="latest"
+                                  className="w-full bg-bg border border-border rounded p-1.5 px-2 text-[11px] text-bright outline-none focus:border-cyan transition-colors"
+                                />
+                              </div>
+                              {isSelected && s.inputs.length > 0 && (
+                                <div className="mt-1 flex flex-col gap-3 pt-3 border-t border-border/50" onClick={e => e.stopPropagation()}>
                                   {s.inputs.map(inp => (
-                                    <div key={inp.id} className="flex flex-col gap-0.5">
+                                    <div key={inp.id} className="flex flex-col gap-1.5">
                                         <div className="flex items-center justify-between">
-                                          <span className="text-[9px] uppercase tracking-wider text-dim">{inp.label}</span>
+                                          <span className="text-[9px] font-bold uppercase tracking-wider text-dim">{inp.label}</span>
                                           {inp.id === 'path' && (
                                             <button 
                                               onClick={() => browseFolder(s.id, inp.id)}
-                                              className="text-[8px] text-cyan hover:underline uppercase tracking-tighter"
+                                              className="text-[9px] text-cyan hover:underline uppercase font-bold"
                                             >
                                               Browse
                                             </button>
@@ -1314,15 +1333,15 @@ export default function App() {
                                           value={selServers[s.id].vals[inp.id] || ''}
                                           onChange={e => updateInp(s.id, inp.id, e.target.value)}
                                           placeholder={inp.placeholder}
-                                          className="w-full bg-bg border border-border p-1 px-2 text-[11px] text-bright outline-none focus:border-cyan"
+                                          className="w-full bg-bg border border-border rounded p-1.5 px-2 text-[11px] text-bright outline-none focus:border-cyan transition-colors"
                                         />
                                       </div>
                                     ))}
                                   </div>
-                                </>
-                              )}
-                          </div>
-                        ))}
+                                )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </motion.div>
                   )}
@@ -1333,52 +1352,41 @@ export default function App() {
         </div>
       </section>
 
-      {/* Step 3: Generate */}
-      <section className="mb-7">
-        <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-[0.12em] text-cyan">
-          03 &nbsp; Generate & Actions
-          <div className="h-[1px] flex-1 bg-border"></div>
-        </div>
-        <div className="flex gap-2">
-          <button
+      {/* Step 3: Generate & Actions */}
+      <section className="mb-10">
+        <h2 className="text-[11px] font-bold tracking-[0.15em] text-bright uppercase mb-5">03 GENERATE & ACTIONS</h2>
+        <div className="flex flex-wrap gap-3">
+          <button 
             onClick={generate}
             disabled={!selIDE || Object.keys(selServers).length === 0 || isGenerating}
-            className="flex-1 border border-cyan bg-transparent p-3.5 text-[12px] font-medium uppercase tracking-widest text-cyan hover:bg-cyan hover:text-bg transition-all relative overflow-hidden disabled:opacity-30 disabled:cursor-not-allowed group"
+            className="bg-cyan hover:bg-cyan/90 text-bg font-bold py-3.5 px-8 rounded-lg text-[13px] tracking-[0.05em] transition-all flex-grow sm:flex-grow-0 uppercase shadow-lg shadow-cyan/10 disabled:opacity-50 disabled:shadow-none"
           >
-            <span className="relative z-10 flex items-center justify-center gap-2">
-              {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-              {isGenerating ? 'Building your config...' : 'Generate MCP Config'}
-            </span>
+            {isGenerating ? 'GENERATING...' : 'GENERATE MCP CONFIG'}
           </button>
-          <button
-            onClick={saveConfig}
-            className="border border-border bg-surface p-3.5 text-[12px] font-medium uppercase tracking-widest text-dim hover:text-cyan hover:border-cyan transition-all flex items-center gap-2"
-            title="Save current selection to app"
-          >
-            <Save size={14} />
-            Save
-          </button>
-          <button
-            onClick={exportConfig}
-            className="border border-border bg-surface p-3.5 text-[12px] font-medium uppercase tracking-widest text-dim hover:text-cyan hover:border-cyan transition-all flex items-center gap-2"
-            title="Export to JSON file"
-          >
-            <Download size={14} />
-            Export
-          </button>
-          <label className="border border-border bg-surface p-3.5 text-[12px] font-medium uppercase tracking-widest text-dim hover:text-cyan hover:border-cyan transition-all flex items-center gap-2 cursor-pointer">
-            <Upload size={14} />
-            Import
-            <input type="file" accept=".json" onChange={importConfig} className="hidden" />
-          </label>
-          <button
-            onClick={() => setShowSavedModal(true)}
-            className="border border-border bg-surface p-3.5 text-[12px] font-medium uppercase tracking-widest text-dim hover:text-cyan hover:border-cyan transition-all flex items-center gap-2"
-            title="View saved configurations"
-          >
-            <FolderOpen size={14} />
-            Saved
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={saveConfig}
+              className="bg-surface border border-border hover:bg-surface2 text-bright py-2 px-5 rounded-lg text-[11px] font-bold transition-colors uppercase tracking-wider"
+            >
+              SAVE
+            </button>
+            <button 
+              onClick={exportConfig}
+              className="bg-surface border border-border hover:bg-surface2 text-bright py-2 px-5 rounded-lg text-[11px] font-bold transition-colors uppercase tracking-wider"
+            >
+              EXPORT
+            </button>
+            <label className="bg-surface border border-border hover:bg-surface2 text-bright py-2 px-5 rounded-lg text-[11px] font-bold transition-colors uppercase tracking-wider cursor-pointer">
+              IMPORT
+              <input type="file" className="hidden" accept=".json" onChange={importConfig} />
+            </label>
+            <button 
+              onClick={() => setShowSavedModal(true)}
+              className="bg-surface border border-border hover:bg-surface2 text-bright py-2 px-5 rounded-lg text-[11px] font-bold transition-colors uppercase tracking-wider"
+            >
+              SAVED
+            </button>
+          </div>
         </div>
       </section>
 
@@ -1489,67 +1497,73 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Step 4: Output */}
+      {/* Step 4: Your Config */}
       <AnimatePresence>
         {generatedConfig && (
           <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-8"
+            className="mb-10 pb-10"
           >
-            <div className="mb-3 flex items-center justify-between text-[10px] uppercase tracking-[0.12em] text-cyan">
-              <div className="flex items-center gap-2">
-                04 &nbsp; Your Config
-                <div className="h-[1px] w-24 bg-border"></div>
-              </div>
-              <div className="flex gap-2">
+            <h2 className="text-[11px] font-bold tracking-[0.15em] text-bright uppercase mb-5">04 YOUR CONFIG</h2>
+            <div className="relative group">
+              <div className="absolute top-4 right-4 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 
-                  onClick={saveConfig}
-                  className="flex items-center gap-1 text-dim hover:text-cyan transition-colors"
+                  onClick={doCopy}
+                  className="p-2 bg-surface/80 backdrop-blur border border-border rounded-md text-dim hover:text-cyan transition-colors"
+                  title="Copy to clipboard"
                 >
-                  <Save size={12} />
-                  Save Locally
+                  {copyDone ? <Check size={14} className="text-green" /> : <Copy size={14} />}
                 </button>
               </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              {Object.values(selServers).map(({ def }) => (
-                <span key={def.id} className="inline-flex items-center gap-1 bg-green/5 border border-green/20 text-green px-2 py-0.5 text-[10px] rounded-sm">
-                  <span className="h-1 w-1 rounded-full bg-green"></span>
-                  {def.title}
-                </span>
-              ))}
-            </div>
-
-            <div className="border border-border bg-[#0a1520] flex items-center justify-between p-[9px_13px]">
-              <div className="flex items-center gap-2 text-[10px] text-dim tracking-wider">
-                <div className="h-1.5 w-1.5 rounded-full bg-green shadow-[0_0_5px_var(--color-green)] blink-animation"></div>
-                {IDE_DEFS[selIDE!].filename}
+              <div className="bg-bg border border-border rounded-xl p-6 overflow-hidden shadow-inner">
+                <pre className="text-[13px] font-mono text-dim overflow-x-auto no-scrollbar leading-relaxed">
+                  <code className="block">
+                    {generatedConfig.split('\n').map((line, i) => {
+                      // Simple syntax highlighting for keys
+                      const parts = line.split(/(".*?"):/);
+                      return (
+                        <div key={i}>
+                          {parts.map((p, j) => (
+                            <span key={j} className={p.startsWith('"') && p.endsWith('"') ? 'text-cyan' : ''}>
+                              {p}{j === 1 ? ':' : ''}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </code>
+                </pre>
               </div>
-              <button
-                onClick={doCopy}
-                className={`border px-3 py-1 text-[10px] transition-all ${copyDone ? 'border-green text-green' : 'border-border text-dim hover:border-green hover:text-green'}`}
-              >
-                {copyDone ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            
-            <div className="code-block border border-border border-t-0 bg-[#0a0e14] p-4.5 overflow-auto max-h-[500px] text-[12px] leading-relaxed font-mono whitespace-pre"
-                 dangerouslySetInnerHTML={{ __html: highlight(generatedConfig) }} />
-
-            <div className="mt-3 border border-amber/20 bg-amber/5 p-[13px_15px] text-[11px] leading-relaxed">
-              <strong className="text-amber">📌 {IDE_DEFS[selIDE!].label} Setup:</strong><br />
-              <div dangerouslySetInnerHTML={{ __html: IDE_DEFS[selIDE!].note }} />
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-[11px] text-dim italic flex items-center gap-2">
+                  <Bot size={12} />
+                  Prompt to paste your config generated // {new Date().toLocaleDateString()} in #mcp-generator
+                </p>
+                <div className="flex items-center gap-2 text-[10px] text-dim tracking-wider">
+                  <div className="h-1.5 w-1.5 rounded-full bg-green shadow-[0_0_5px_var(--color-green)] blink-animation"></div>
+                  {IDE_DEFS[selIDE!].filename}
+                </div>
+              </div>
+              
+              <div className="mt-6 border border-amber/20 bg-amber/5 p-4 rounded-lg text-[11px] leading-relaxed">
+                <strong className="text-amber block mb-1">📌 {IDE_DEFS[selIDE!].label} Setup:</strong>
+                <div className="text-dim" dangerouslySetInnerHTML={{ __html: IDE_DEFS[selIDE!].note }} />
+              </div>
             </div>
           </motion.section>
         )}
       </AnimatePresence>
 
-      <footer className="mt-12 pt-4 border-t border-border flex justify-between text-[10px] text-dim">
-        <span>MCP Config Generator v2</span>
-        <span>Powered by Claude • AfflictedAI</span>
+      <footer className="mt-12 pt-6 border-t border-border flex justify-between items-center text-[10px] text-dim uppercase tracking-widest font-medium">
+        <span>MCP Config Generator v2.5</span>
+        <div className="flex items-center gap-4">
+          <span>Powered by Claude</span>
+          <span className="h-3 w-[1px] bg-border"></span>
+          <span>AfflictedAI</span>
+        </div>
       </footer>
     </div>
+  </div>
   );
 }
