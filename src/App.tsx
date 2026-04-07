@@ -669,6 +669,23 @@ export default function App() {
     return term ? results : [];
   }, [searchTerm, customServers]);
 
+  // Auto-trigger web search when local results are empty and user pauses typing
+  useEffect(() => {
+    if (!searchTerm.trim() || !tavilyKey) {
+      setTavilyResults([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (filteredServers.length === 0) {
+        setTavilySearch(searchTerm);
+        handleTavilySearch();
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, filteredServers.length, tavilyKey]);
+
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSavedModal, setShowSavedModal] = useState(false);
   const [savedConfigs, setSavedConfigs] = useState<any[]>(() => JSON.parse(localStorage.getItem('mcp-saved-configs') || '[]'));
@@ -982,7 +999,10 @@ export default function App() {
   }, [customServers]);
 
   const handleTavilySearch = async () => {
-    if (!tavilySearch.trim() || !tavilyKey) return;
+    if (!searchTerm.trim() && !tavilySearch.trim()) return;
+    const query = searchTerm.trim() || tavilySearch.trim();
+    if (!tavilyKey) return;
+    
     setIsSearchingTavily(true);
     setTavilyResults([]);
     try {
@@ -991,7 +1011,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           api_key: tavilyKey,
-          query: `MCP server configuration for ${tavilySearch}`,
+          query: `MCP server configuration npx command for ${query}`,
           search_depth: "advanced",
           include_domains: [
             "github.com/modelcontextprotocol/servers",
@@ -1002,11 +1022,18 @@ export default function App() {
             "mcp.so",
             "glama.ai"
           ],
-          max_results: 6
+          max_results: 8
         })
       });
       const data = await response.json();
-      setTavilyResults(data.results || []);
+      
+      // Filter results to only those that look like they have configs
+      const results = (data.results || []).filter((res: any) => {
+        const content = (res.title + res.content).toLowerCase();
+        return content.includes('npx') || content.includes('config') || content.includes('install') || content.includes('command') || content.includes('mcp');
+      });
+      
+      setTavilyResults(results);
     } catch (err) {
       console.error(err);
     } finally {
@@ -1312,40 +1339,11 @@ export default function App() {
                       </button>
                     </div>
 
+                    {/* Web Results moved to Step 2 */}
                     {tavilyResults.length > 0 && (
-                      <div className="mt-4 space-y-3">
-                        <div className="text-[9px] uppercase tracking-widest text-dim flex justify-between items-center">
-                          <span>Web Results (Restricted Sources)</span>
-                          <span className="opacity-50">Powered by Tavily</span>
-                        </div>
-                        {tavilyResults.map((res, i) => (
-                          <div key={i} className="p-4 border border-border bg-bg rounded-xl group hover:border-cyan transition-colors">
-                            <div className="flex justify-between items-start gap-4 mb-2">
-                              <div className="flex-1">
-                                <div className="text-[12px] font-bold text-bright mb-1 group-hover:text-cyan transition-colors">{res.title}</div>
-                                <div className="text-[9px] text-dim font-mono truncate max-w-[250px]">{res.url}</div>
-                              </div>
-                              <button 
-                                onClick={() => addWebResult(res, i)}
-                                disabled={isExtracting !== null}
-                                className="bg-cyan/10 border border-cyan/20 text-cyan px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-cyan hover:text-bg transition-all flex items-center gap-1.5"
-                              >
-                                {isExtracting === i ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
-                                {isExtracting === i ? 'Extracting...' : 'Add to List'}
-                              </button>
-                            </div>
-                            <p className="text-[11px] text-dim line-clamp-3 mb-3 leading-relaxed">{res.content}</p>
-                            <a 
-                              href={res.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-[9px] text-dim hover:text-cyan flex items-center gap-1 w-fit"
-                            >
-                              <Globe size={10} />
-                              View Source
-                            </a>
-                          </div>
-                        ))}
+                      <div className="p-4 border border-purple/20 bg-purple/5 rounded-xl text-center">
+                        <p className="text-purple text-[10px] font-medium uppercase tracking-wider">Results found!</p>
+                        <p className="text-dim text-[10px] mt-1">Web search results are now integrated directly into the main search view in Step 2.</p>
                       </div>
                     )}
                   </div>
@@ -1544,7 +1542,7 @@ export default function App() {
                     );
                   })}
                 </div>
-              ) : (
+              ) : !isSearchingTavily && tavilyResults.length === 0 && (
                 <div className="p-12 border border-dashed border-border rounded-xl text-center">
                   <p className="text-dim text-[13px] mb-2">No local servers found matching "{searchTerm}"</p>
                   {tavilyKey ? (
@@ -1552,7 +1550,6 @@ export default function App() {
                       onClick={() => {
                         setTavilySearch(searchTerm);
                         handleTavilySearch();
-                        setShowSettings(true);
                       }}
                       className="text-cyan hover:underline text-[11px] flex items-center gap-1 mx-auto"
                     >
@@ -1562,6 +1559,62 @@ export default function App() {
                   ) : (
                     <p className="text-[11px] text-dim/60">Try a different keyword or configure Tavily in Settings for web search.</p>
                   )}
+                </div>
+              )}
+
+              {/* Web Results Section */}
+              {(isSearchingTavily || tavilyResults.length > 0) && (
+                <div className="mt-10 pt-10 border-t border-border">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-[10px] font-bold text-purple uppercase tracking-[0.2em]">WEB CONFIGS FOUND</h3>
+                      {isSearchingTavily && <Loader2 size={12} className="animate-spin text-purple" />}
+                    </div>
+                    <span className="text-[9px] text-dim uppercase tracking-widest">Only showing addable configs</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {tavilyResults.map((res, i) => (
+                      <div key={i} className="p-5 border border-border bg-surface rounded-xl group hover:border-purple transition-all flex flex-col gap-3">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13px] font-bold text-bright mb-1 truncate group-hover:text-purple transition-colors">{res.title}</div>
+                            <div className="text-[9px] text-dim font-mono truncate opacity-50">{res.url}</div>
+                          </div>
+                          <button 
+                            onClick={() => addWebResult(res, i)}
+                            disabled={isExtracting !== null}
+                            className="bg-purple/10 border border-purple/20 text-purple w-8 h-8 rounded-lg flex items-center justify-center hover:bg-purple hover:text-bg transition-all shrink-0"
+                            title="Extract and Add Config"
+                          >
+                            {isExtracting === i ? <Loader2 size={14} className="animate-spin" /> : <Plus size={16} />}
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-dim line-clamp-2 leading-relaxed">
+                          {res.content}
+                        </p>
+                        <div className="mt-auto pt-2 flex items-center justify-between">
+                          <a 
+                            href={res.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-[9px] text-dim hover:text-purple flex items-center gap-1 transition-colors"
+                          >
+                            <Globe size={10} />
+                            Source
+                          </a>
+                          <span className="text-[8px] bg-purple/5 text-purple/50 px-1.5 py-0.5 rounded border border-purple/10 uppercase font-bold">Addable</span>
+                        </div>
+                      </div>
+                    ))}
+                    {isSearchingTavily && Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="p-5 border border-border bg-surface/50 rounded-xl animate-pulse flex flex-col gap-3">
+                        <div className="h-4 bg-border rounded w-3/4"></div>
+                        <div className="h-3 bg-border rounded w-1/2"></div>
+                        <div className="h-10 bg-border rounded w-full mt-2"></div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               <div className="h-[1px] w-full bg-border mt-10"></div>
